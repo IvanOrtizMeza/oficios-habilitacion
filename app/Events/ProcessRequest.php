@@ -1,0 +1,29 @@
+<?php
+
+namespace App\Events;
+
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+
+class ProcessRequest
+{
+    use Dispatchable, InteractsWithSockets, SerializesModels;
+
+
+    /**
+     * Create a new event instance.
+     */
+    public function __construct(public Model $solicitud)
+    {
+        
+    }
+
+    /**
+     * Get the channels the event should broadcast on.
+     *
+     * @return array<int, \Illuminate\Broadcasting\Channel>
+     */
+    
+}
