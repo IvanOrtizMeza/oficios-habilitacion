@@ -42,8 +42,23 @@
             <flux:table.cell class="px-6 py-4 text-center">
                 <div class="flex justify-center gap-2">
                     <flux:button icon="eye" size="xs" color="primary" wire:click="$dispatch('ModalSolicitud', { id: {{ $oficio->id }} })" />
-                    <flux:button icon="pencil" size="xs" variant="outline" wire:click="editar({{ $oficio->id }})" />
-                    <flux:button icon="trash" size="xs" color="danger" wire:click="eliminar({{ $oficio->id }})" />
+                    @if($oficio->estado !==0 && !empty($oficio->pdf_path))
+                    <flux:button icon="document-magnifying-glass" size="xs" color="primary" wire:click="$dispatch('ModalPdf', { id: {{ $oficio->id }} })" />
+                    @endif
+                    {{--  href="{{ Storage::url($oficio->pdf_path) }}" --}}
+                    {{--  {{ route('verPdf', $oficio->id) }}--}}
+                    @if($oficio->estado !== 0 && !empty($oficio->pdf_path))
+                        <flux:button 
+                            tag="a"
+                            href="{{ $oficio->oficio_url }}"                        
+                            target="_blank"
+                            icon="document"
+                            size="xs"
+                            variant="outline"
+                        />
+                    @endif
+                    
+                   
                 </div>
             </flux:table.cell>
         </flux:table.row>

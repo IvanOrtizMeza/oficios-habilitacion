@@ -21,7 +21,7 @@ class SancionesFederalesImport implements ToModel,WithHeadingRow
     public function model(array $row)
     {
         return new SancionesFederal([
-           'dependencia'=> $row['dependencia'] ?? null,
+            'dependencia'=> $row['dependencia'] ?? null,
             'rfc'=> $row['rfc'] ?? null,
             'homo'=> $row['homo'] ?? null,
             'apellido_paterno'=> $row['apellido_paterno'] ?? null,

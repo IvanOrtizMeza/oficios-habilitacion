@@ -5,21 +5,45 @@ namespace App\Livewire\Actions;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Spatie\Browsershot\Browsershot;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Storage;
+use App\Models\Solicitud;
+
 class RequestPdfGenerator
 {
-    /**
-     * Generate the PDF for the given solicitud.
-     */
-    public function handle($solicitud)
+
+    public function handle(&$solicitud)
     {
-       
-        $firmaData = (new SignedRequest)->handle($solicitud);
-       
+
+        $solicitud->fecha_creacion_pdf = now();
+        $iniciales = 'S.C./D.G.R/';
+        $firmaData = (new SignedRequest)->handle($solicitud, $solicitud->fecha_creacion_pdf);
+
         $qrSvg = QrCode::format('svg')->size(200)->generate($firmaData['urlValidacion']);
         $qrCode = 'data:image/svg+xml;base64,' . base64_encode($qrSvg);
-        $contenido = '||' . 'OF-' . date('Y') . '-' . str_pad($solicitud->id, 3, '0', STR_PAD_LEFT) . '|'. Carbon::now()->format('d/m/Y') . '|' . $solicitud->rfc . '|' . 123456 . '|' . ($solicitud->estado == 1 ? 'CONSTANCIA DE HABILITACION' : 'CONSTANCIA DE NO HABILITACION') . '||';
-        $fechaEnLetras = $this->fechaATexto(Carbon::now());
-        $folioDocumento = 'OF-' . date('Y') . '-' . str_pad($solicitud->id, 3, '0', STR_PAD_LEFT);
+        //revisar
+        $fechaExpedicion = Carbon::parse($solicitud->fecha_creacion_pdf)->format('d/m/Y');
+
+        $anioExpedicion = Carbon::parse($solicitud->fecha_creacion_pdf)->format('Y');
+        $ultimoFolioContenido = Solicitud::whereYear('fecha_creacion_pdf', $anioExpedicion)
+                    ->orderBy('folio_num', 'desc')
+                    ->first();
+        $folioNumContenido = $ultimoFolioContenido ? $ultimoFolioContenido->folio_num + 1 : 1;
+        $contenido = $iniciales . str_pad($folioNumContenido, 6, '0', STR_PAD_LEFT) . '/' . $anioExpedicion . '|' . $fechaExpedicion . '|' . $solicitud->rfc . '|' . 123456 . '|' . ($solicitud->estado == 1 ? 'OFICIO DE HABILITACIÓN / HABILITADO' : 'OFICIO DE HABILITACIÓN / NO HABILITADO');
+        //revisar arriba
+        
+        $fechaEnLetras = $this->fechaATexto($solicitud);
+
+        $anio = Carbon::parse($solicitud->fecha_creacion_pdf)->format('Y');
+        
+        $ultimoFolio = Solicitud::whereYear('fecha_creacion_pdf', $anio)
+                        ->orderBy('folio_num', 'desc')
+                        ->first();
+
+        $folioNum = $ultimoFolio ? $ultimoFolio->folio_num + 1 : 1;
+        $solicitud->folio_num = $folioNum;
+        
+        $folioDocumento = sprintf('S.C./D.G.R/%06d/%s', $folioNum, $anio);
+
         $html = view('PDF.oficio', [
             'solicitud' => $solicitud,
             'folioDocumento' => $folioDocumento,
@@ -27,31 +51,47 @@ class RequestPdfGenerator
             'selloDigital' => $firmaData['selloDigital'],
             'estampadoTiempo' => $firmaData['estampadoTiempo'],
             'selloEstampadoTiempo' => $firmaData['selloEstampadoTiempo'],
-            'contenido' =>$contenido,
+            'contenido' => $contenido,
             'fechaEnLetras' => $fechaEnLetras,
         ])->render();
-      
-        $pdfPath = storage_path("app/public/oficio_{$solicitud->id}.pdf");
-             
-        Browsershot::html($html)
+
+        
+       // $fileName = "oficio_{$folioNum}_{$anio}.pdf";
+       // $pdfPath = 'oficios/' . $fileName;
+        $folioPadded = str_pad($folioNum, 6, '0', STR_PAD_LEFT);
+        $carpetaAnio = "oficios/{$anio}";
+        Storage::disk('local')->makeDirectory($carpetaAnio);
+        $fileName = "oficio_{$folioPadded}_{$anio}.pdf";
+        $pdfPath = "{$carpetaAnio}/{$fileName}";
+
+        $pdfData = Browsershot::html($html)
             ->format('A4')
-            ->margins(10,10,10,10)
+            ->margins(10, 10, 10, 10)
             ->fullPage()
             ->showBackground()
-            ->save($pdfPath);
-
-        return $pdfPath; 
-
+            ->pdf();
+        //->save($pdfPath);
+        Storage::disk('local')->put($pdfPath, $pdfData);
+        return $pdfPath;
     }
-     private function fechaATexto($fecha = null)
+    private function fechaATexto($solicitud)
     {
-        $fecha = $fecha ? Carbon::parse($fecha) : Carbon::today();
-        
+        $fecha = $solicitud->fecha_creacion_pdf;
+
         $dia = (int)$fecha->format('d');
         $meses = [
-            1 => 'enero', 2 => 'febrero', 3 => 'marzo', 4 => 'abril',
-            5 => 'mayo', 6 => 'junio', 7 => 'julio', 8 => 'agosto',
-            9 => 'septiembre', 10 => 'octubre', 11 => 'noviembre', 12 => 'diciembre'
+            1 => 'Enero',
+            2 => 'Febrero',
+            3 => 'Marzo',
+            4 => 'Abril',
+            5 => 'Mayo',
+            6 => 'Junio',
+            7 => 'Julio',
+            8 => 'Agosto',
+            9 => 'Septiembre',
+            10 => 'Octubre',
+            11 => 'Noviembre',
+            12 => 'Diciembre'
         ];
         $mes = $meses[(int)$fecha->format('m')];
         $anio = (int)$fecha->format('Y');

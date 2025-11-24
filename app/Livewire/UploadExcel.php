@@ -10,20 +10,30 @@ use Exception;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\SancionesFederalesImport;
 use Flux\Flux;
+
 class UploadExcel extends Component
 {
     use WithFileUploads;
 
     public $excelFile;
-    public $progress = 0;
-      // Columnas y hoja esperadas
-    private $hojaEsperada = 'tableResultado';
+    public $showErrorsModal = false;
+    public $erroresList = [];
+    
+    // Columnas y hoja esperadas
+    //private $hojaEsperada = 'tableResultado';
     private $columnasEsperadas = ['DEPENDENCIA', 'RFC', 'HOMO', 'APELLIDO PATERNO', 'APELLIDO MATERNO', 'NOMBRE', 'AUTORIDAD SANCIONADORA', 'PUESTO', 'PERIODO', 'FECHA RESOLUCION', 'FECHA NOTIFICACION', 'FECHA INICIO', 'FECHA FIN'];
 
-    protected function rules()
+    private function getColumnLetter($index) {
+        $letters = '';
+        while ($index >= 0) {
+            $letters = chr(65 + ($index % 26)) . $letters;
+            $index = intval($index / 26) - 1;
+        }
+        return $letters;
+    }    protected function rules()
     {
         return [
-            'excelFile' => 'required|file',
+            'excelFile' => 'required|file|max:5120', // máximo 2 MB
         ];
     }
     protected function messages()
@@ -31,56 +41,35 @@ class UploadExcel extends Component
         return [
             'excelFile.required' => 'Debes seleccionar un archivo Excel.',
             'excelFile.file' => 'El archivo debe ser válido.',
-            //'excelFile.max' => 'El archivo no puede superar los 5 MB.',
-            //'excelFile.mimetypes' => 'Solo se permiten archivos Excel (.xls, .xlsx).', // <- aquí
-            //'excelFile.*' => 'El archivo debe ser de tipo Excel (.xls, .xlsx).',  
+            'excelFile.mimes' => 'Solo se permiten archivos Excel (.xls, .xlsx).',
+            'excelFile.max' => 'El archivo no puede superar los 2 MB.',
         ];
     }
     //validacion en la carga del archivo excel
     public function updatedExcelFile()
     {
         $archivo = $this->excelFile;
-      
-        if (!$archivo) {
-            return;
-        }
+
         try {
-            // $this->validateOnly('excelFile');
-            // Datos del archivo
+            $this->validateOnly('excelFile');
 
+            $nombreArchivo = $this->excelFile->getClientOriginalName();
             $extension = strtolower($archivo->getClientOriginalExtension());
-            $sizeKB = $archivo->getSize() / 1024; // tamaño en KB
-            // Validar extensión (.xls y .xlsx)
-            if (!in_array($extension, ['xls', 'xlsx'])) {
-                Flux::toast(
-                    variant: 'danger',
-                    heading: 'Archivo inválido',
-                    text: 'Debes seleccionar un archivo Excel (.xls o .xlsx).',
-                    position: 'top-center'
-                );
-                // Limpiar el input para evitar conflictos
-                $this->reset('excelFile');
-                return;
-            }
-            // Validar tamaño maximo (ejemplo: máximo 5 MB)
-            if ($sizeKB > 5 * 1024) {
-                Flux::toast(
-                    variant: 'danger',
-                    heading: 'Archivo demasiado grande',
-                    text: 'El archivo no puede superar los 5 MB.',
-                    position: 'top-center'
-                );
+            $sizeKB = $archivo->getSize() / 1024;
 
+
+            $datos = Excel::toArray([], $archivo);
+            $hoja = $datos[0] ?? []; //tomo la primer hoja de excel, si no existe regreso un array vacio
+
+
+            if (empty($hoja)) {
+
+                Flux::toast('El archivo está vacío.', variant: 'danger', position: 'top-center');
                 $this->reset('excelFile');
                 return;
             }
 
-            // leo el archivo excel
-            $datos = Excel::toArray([], $this->excelFile);
-            // leo la primera hoja
-            $hoja = $datos[0] ?? [];
-
-            // comprobar contenido
+            $hayContenido = false;
             foreach ($hoja as $fila) {
                 foreach ($fila as $celda) {
                     if (!empty(trim((string) $celda))) {
@@ -90,100 +79,121 @@ class UploadExcel extends Component
                 }
             }
             if (!isset($hayContenido)) {
+
                 Flux::toast('El archivo está vacío.', variant: 'danger', position: 'top-center');
+                $this->reset('excelFile');
                 return;
             }
 
-            // encabezados del excel para compararlos con los esperados
             $encabezados = array_map(
-                fn ($v) => strtoupper(trim((string) $v)),
+                fn($v) => strtoupper(trim((string) $v)),
                 $hoja[0] ?? []
             );
-            $encabezados = array_filter($encabezados, fn ($v) => $v !== '');
-            $encabezados = array_values($encabezados); // reindexar
+            $indicesValidos = [];
+            foreach ($encabezados as $idx => $header) {
+                if ($header !== '') {
+                    $indicesValidos[] = $idx;
+                }
+            }
+            $encabezados = array_values(array_intersect_key($encabezados, array_flip($indicesValidos)));
 
-            // Comparar con los esperados con los del archivo que se sube
             $columnasFaltantes = array_diff($this->columnasEsperadas, $encabezados);
 
             if (!empty($columnasFaltantes)) {
+
                 $missing = implode(', ', $columnasFaltantes);
                 Flux::toast("Encabezados faltantes: {$missing}", variant: 'danger', position: 'top-center');
+                $this->reset('excelFile');
                 return;
-            } 
-            /*
-            $columnCount = count($encabezados);
-            foreach ($hoja as $i => $fila) {
-                $hoja[$i] = array_slice($fila, 0, $columnCount);
             }
-           
+
+            $columnasExtras = array_diff($encabezados, $this->columnasEsperadas);
+            if (!empty($columnasExtras)) {
+                $missing = implode(', ', $columnasExtras);
+                Flux::toast("Encabezados no permitidos en el Excel: {$missing}", variant: 'danger', position: 'top-center');
+                $this->reset('excelFile');
+                return;
+            }
+
+            $errores = [];
             foreach ($hoja as $i => $fila) {
                 if ($i === 0) continue; // Saltar encabezado
 
-                $filaAsociativa = array_combine($encabezados, $fila);
+                $filaFiltrada = [];
+                foreach ($indicesValidos as $idx) {
+                    $filaFiltrada[] = trim((string)($fila[$idx] ?? ''));
+                }
+                $filaAsociativa = array_combine($encabezados, $filaFiltrada);
+                $rowNum = $i + 2; // Fila 1: encabezado, fila 2: primera dato
 
-                $errores = [];
-
+                // Validar RFC
                 $rfc = trim((string)($filaAsociativa['RFC'] ?? ''));
+                $colIndexRfc = array_search('RFC', $encabezados);
+                if ($colIndexRfc !== false) {
+                    $colLetter = $this->getColumnLetter($colIndexRfc);
+                    $valoresVacios = ['', 'NULL', 'N/A', '#N/A', '0'];
+                    if (empty($rfc) || in_array(strtoupper($rfc), $valoresVacios)) {
+                        $errores[] = "Celda {$colLetter}{$rowNum}: RFC vacío ('{$rfc}')";
+                    } 
+                    /*elseif (!preg_match('/^[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{3}$/iu', strtoupper($rfc))) {
+                        $errores[] = "Celda {$colLetter}{$rowNum}: RFC inválido ('{$rfc}')";
+                    }*/
+                }
 
-                if ($rfc === '') {
-                    $errores[] = "RFC vacío";
-                } elseif (strlen($rfc) !== 13) {
-                    $errores[] = "RFC con longitud inválida";
-                }
-                 // Validar Nombre
-                $nombre = trim((string)($filaAsociativa['NOMBRE'] ?? ''));
-                if ($nombre === '') {
-                    $errores[] = "Nombre vacío";
-                }
+                // Validar Nombre
+               /* $nombre = trim((string)($filaAsociativa['NOMBRE'] ?? ''));
+                $colIndexNombre = array_search('NOMBRE', $encabezados);
+                if ($colIndexNombre !== false) {
+                    $colLetter = $this->getColumnLetter($colIndexNombre);
+                    if (empty($nombre)) {
+                        $errores[] = "Celda {$colLetter}{$rowNum}: Nombre vacío ('{$nombre}')";
+                    }
+                }*/
+            }
 
-                // Si hay errores → mostrar un solo mensaje
-                if (!empty($errores)) {
-                    $mensaje = "Fila " . ($i + 1) . ": " . implode(', ', $errores) . ".";
-                    Flux::toast($mensaje, variant:'danger', position:'top-center');
-                    $this->reset('excelFile');
-                    return;
-                }
-            }*/
-        }catch (Exception $e) {
-          
+            if (!empty($errores)) {
+                $this->erroresList = $errores;
+                $this->showErrorsModal = true;
+                $this->reset('excelFile');
+                return;
+            }
+        } catch (ValidationException $e) {
+            $mensaje = implode(', ', $e->validator->errors()->all());
             Flux::toast(
                 variant: 'danger',
-                heading: 'Error inesperado',
-                text: 'Ocurrió un problema al procesar el archivo: ' . $e->getMessage(),
+                heading: 'Error',
+                text: 'Archivo inválido: ' . $mensaje,
                 position: 'top-center'
             );
+            $this->removeFile();
             return;
         }
-        $this->progress = 30;
+    }
 
-        // Simular un proceso (por ejemplo validación o lectura del Excel)
-        sleep(1);
-        $this->progress = 60;
 
-        // Simular el guardado
-        sleep(1);
-        $this->progress = 100;
+    public function subir()
+    {
+
+        $path = $this->excelFile->store('excel_uploads', 'public');
+        try {
+            Excel::import(new SancionesFederalesImport, storage_path('app/public/' . $path));
+            Flux::toast(
+                variant: 'success',
+                heading: 'Archivo Subido Correctamente',
+                text: 'El archivo Excel ha sido procesado exitosamente.',
+                position: 'top-center'
+            );
+            $this->reset('excelFile');
+        } catch (ValidationException $e) {
+            Flux::toast('Error en la importación del archivo: ' . $e->getMessage(), variant: 'danger', position: 'top-center');
+        }
     }
 
     public function removeFile()
     {
         $this->reset('excelFile');
-    }
-   
-    public function subir()
-    {
-           
-        $path = $this->excelFile->store('excel_uploads', 'public');
-        Excel::import(new SancionesFederalesImport, storage_path('app/public/' . $path));
-        Flux::toast (
-            variant: 'success',
-            heading: 'Archivo Subido Correctamente',
-            text: 'El archivo Excel ha sido procesado exitosamente.',
-            position: 'top-center'
-        );
-     
-
-        $this->reset('excelFile');
+        $this->showErrorsModal = false;
+        $this->erroresList = [];
     }
     public function render()
     {

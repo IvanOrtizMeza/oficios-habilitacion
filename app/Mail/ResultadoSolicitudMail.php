@@ -8,6 +8,8 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Attachment;
+use Illuminate\Support\Facades\Storage;
+
 class ResultadoSolicitudMail extends Mailable
 {
     use Queueable, SerializesModels;
@@ -33,9 +35,9 @@ class ResultadoSolicitudMail extends Mailable
     {
         return new Content(
             view: 'emails.resultado-solicitud',
-             with: [
-                'nombre' => $this->nombre,
-                'estado' => $this->estado,
+            with: [
+            'nombre' => $this->nombre,
+            'estado' => $this->estado,
             ]
         );
     }
@@ -48,7 +50,7 @@ class ResultadoSolicitudMail extends Mailable
     public function attachments(): array
     {
         return [
-            Attachment::fromPath($this->pdfPath)
+            Attachment::fromPath(Storage::disk('local')->path($this->pdfPath))
                 ->as('Oficio.pdf')
                 ->withMime('application/pdf'),
         ];

@@ -3,42 +3,55 @@
 namespace App\Livewire\Actions;
 use Carbon\Carbon;
 use RuntimeException;
-
+use App\Models\Solicitud;
 class SignedRequest
 {
     /**
      * Generate the PDF for the given solicitud.
      */
-    public function handle($solicitud)
+    public function handle($solicitud,$fechaCreacionPdf)    
     {
-       
+        
         $endpoint = 'https://firma-dev.morelos.gob.mx/WSFirmaOficio';
-
         $keyPath = storage_path('app/keys/ROPG890310N82.key');
 
         if (! is_readable($keyPath)) {
-            throw new \RuntimeException('No se pueden leer los archivos .key');
+            throw new \RuntimeException('Archivo .key no encontrado');
         }
-        $llave = base64_encode(file_get_contents($keyPath));
-
+        if (filesize($keyPath) === 0) {
+            throw new \RuntimeException("El archivo .key existe pero está vacío: $keyPath");
+        }
+        $contenido = file_get_contents($keyPath);
+        if ($contenido === false || strlen($contenido) === 0) {
+            throw new \RuntimeException('No se pudo leer el contenido del archivo .key');
+        }
+        $llave = base64_encode($contenido);
         $token = '7f0ba7dd-43f0-4565-a067-51d898d10771';
         $usuario = 'ROPG890310N82';
         $fraseClavePrivada = 'MariaXimena94';
         $tipoDocumento = '7';
-        $folioDocumento = 'OF-' . date('Y') . '-' . str_pad($solicitud->id, 3, '0', STR_PAD_LEFT);
-        $fechaDocumento = date('Y-m-d H:i:s');
+
+        $anio = Carbon::parse($solicitud->fecha_creacion_pdf)->format('Y');
+        $ultimoFolio = Solicitud::whereYear('fecha_creacion_pdf', $anio)
+                    ->orderBy('folio_num', 'desc')
+                    ->first();
+        $folioNum = $ultimoFolio ? $ultimoFolio->folio_num + 1 : 1;
+        $folioDocumento = sprintf('S.C./D.G.R/%06d/%s', $folioNum, $anio);
+        
+        $fechaPDF = $solicitud->fecha_creacion_pdf ?? $fechaCreacionPdf;
+        $fechaDocumento = $fechaPDF->format('Y-m-d H:i:s');
         $contenido = 
-            'No Folio: ' . $folioDocumento . "\n" .
-            'Fecha: ' . Carbon::now()->format('d/m/Y') . "\n" .
-            'RFC: ' . $solicitud->rfc . "\n" .
-            'Nombre: ' . $solicitud->nombre . "\n" .
-            'Línea captura: linea captura' . "\n" .
-            'Estado: ' . ($solicitud->estado == 1 ? 'HABILITADO' : 'NO HABILITADO') . "\n\n";
+        'No Folio: ' . $folioDocumento . "\n" .
+        'Fecha de creacion oficio o fecha actual: ' . Carbon::now()->format('d/m/Y') . "\n" .
+        'RFC: ' . $solicitud->rfc . "\n" .
+        'Nombre: ' . $solicitud->nombre . "\n" .
+        'Línea captura: linea captura' . "\n" .
+        'Estado: ' . ($solicitud->estado == 1 ? 'HABILITADO' : 'NO HABILITADO') . "\n\n";
         $destinatarioNombre = $solicitud->nombre;
         $destinatarioRfc = $solicitud->rfc;
         $destinatarioCurp = $solicitud->curp;
+      
         //$uuid = '';
-        
         $soapEnvelope = <<<XML
         <?xml version="1.0" encoding="UTF-8"?>
         <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://servicioweb/">
@@ -69,7 +82,6 @@ class SignedRequest
 
         
         $keyContent = file_get_contents($keyPath);
-        
         $boundary  = 'MIME_boundary_' . bin2hex(random_bytes(8));
         $startCid  = 'envelope@soap';
 
@@ -141,7 +153,6 @@ class SignedRequest
         
         $urlNodes = $xml->xpath('//ns2:firmaDatosResponse/return/urlValidacion');
         $urlValidacion = $urlNodes && isset($urlNodes[0]) ? (string)$urlNodes[0] : null;
-        
         // selloDigital
         $selloNodes = $xml->xpath('//ns2:firmaDatosResponse/return/selloDigital');
         $selloDigital = $selloNodes && isset($selloNodes[0]) ? (string)$selloNodes[0] : null;
@@ -153,12 +164,15 @@ class SignedRequest
         // selloEstampadoTiempo
         $selloETNodes = $xml->xpath('//ns2:firmaDatosResponse/return/selloEstampadoTiempo');
         $selloEstampadoTiempo = $selloETNodes && isset($selloETNodes[0]) ? (string)$selloETNodes[0] : null;
-
+     
         return [
             'urlValidacion' => $urlValidacion,
             'selloDigital' => $selloDigital,
             'estampadoTiempo' => $estampadoTiempo,
             'selloEstampadoTiempo' => $selloEstampadoTiempo,
+            'fechaDocumento'=> $fechaDocumento,
+            'folioDocumento'=>$folioDocumento,
+            'fechaPDF'=> $fechaPDF,
         ];
 
     }

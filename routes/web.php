@@ -2,11 +2,10 @@
 
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
-use App\Livewire\HeaderDashboard;
 use App\Livewire\Headerfiltrosolicitudes;
 use App\Livewire\ImportDB;
-
-
+use App\Models\Solicitud;
+use Illuminate\Support\Facades\Storage;
 //ruta de inicio la que entra al welcome y la nombro home
 Route::get('/', function () {
     return redirect()->route('dashboard');//regresa la vista welcome que esta en resource/views/welcome.blade.php
@@ -25,10 +24,14 @@ Route::view('dashboard', 'dashboard')//crea una ruta de solo vista sin controlad
 Route::group(['middleware' => ['auth', 'verified']], function() {
     Route::get('solicitudes',Headerfiltrosolicitudes::class)->name('solicitudes');
     Route::get('importdb',ImportDB::class)->name('importdb');
-    Route::get('pdf', function () {
-    return view('PDF.oficio'); 
-    });
-    Route::get('prueba',HeaderDashboard::class)->name('prueba');
+    Route::get('/oficio/{id}/descargar', function ($id){
+        $solicitud = Solicitud::findOrFail($id);
+        if (!$solicitud->pdf_path || !Storage::disk('local')->exists($solicitud->pdf_path)) {
+        abort(404, 'PDF no encontrado.');
+        }
+        $path = Storage::disk('local')->path($solicitud->pdf_path);
+        return response()->download($path);
+    })->name('oficio.descargar');
 });
 
 

@@ -16,7 +16,7 @@
             </div>
         </div>
          <div class="text-right text-sm" >
-            <span class="font-semibold ">Asunto:</span> Oficio de HABILITACIÓN O CONSTANCIA DE NO INHABILITACIÓN
+            <span class="font-semibold ">Asunto:</span> OFICIO DE HABILITACIÓN O CONSTANCIA DE NO INHABILITACIÓN
         </div>
        
         <div class="text-left text-sm">

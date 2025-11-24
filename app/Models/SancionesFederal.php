@@ -9,7 +9,7 @@ class SancionesFederal extends Model
 {
     //
     use HasFactory;
-    protected $table = 'sanciones_federales';
+    protected $table = 'sancionados';
     protected $fillable = [
         'dependencia',
         'rfc',
@@ -24,5 +24,9 @@ class SancionesFederal extends Model
         'fecha_notificacion',
         'fecha_inicio',
         'fecha_fin',
+        'tipo_origen',
     ];
 }
+
+
+//'excelFile' => 'required|file|mimes:xls,xlsx|max:5120',
