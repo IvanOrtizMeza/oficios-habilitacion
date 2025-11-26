@@ -19,9 +19,12 @@ class ResultadoSolicitudMail extends Mailable
     public $pdfPath;
     public function __construct($solicitud,$pdfPath)
     {
+        //dd(['solicitud'=>$solicitud,'pdfPath'=>$pdfPath]);
         $this->nombre = $solicitud->nombre;
+        //dd($this->nombre);
         $this->estado = $solicitud->estado == 1 ? 'Aprobado' : ($solicitud->estado == 2 ? 'Rechazado' : '');
         $this->pdfPath = $pdfPath;
+        //dd($this->pdfPath);
     }
 
     public function envelope(): Envelope

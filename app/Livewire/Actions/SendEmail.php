@@ -12,9 +12,10 @@ class SendEmail
      */
     public function handle($solicitud,$pdfPath,$emailDestino = null)
     {
+       // dd(['solicitud'=>$solicitud,'pdfPath'=>$pdfPath,'emailDestino'=>$emailDestino]);
         //pdfPath => 'oficios/' . oficio_{$solicitud->id}.pdf;
         $email = $emailDestino ?? $solicitud->email;
-       
+       // dd($email);
         try {
             Mail::to($email)
                 ->send(new ResultadoSolicitudMail($solicitud, $pdfPath));
