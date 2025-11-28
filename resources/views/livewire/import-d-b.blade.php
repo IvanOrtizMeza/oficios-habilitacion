@@ -7,13 +7,13 @@
             <div class="p-6 flex flex-col md:flex-row md:items-center md:justify-between">
                 <div>  
                     <h1 class="text-2xl font-semibold text-gray-800 dark:text-gray-100">
-                        Módulo Para Importar Bases De Datos
+                        Módulo Para Importar Base De Datos Federal
                     </h1>
                     <p class="text-gray-500 dark:text-gray-400 text-sm">
-                        Gestión y seguimiento de las bases de datos federales y estatales
+                        Gestión y seguimiento de la base de datos federal.
                     </p>
                 </div>
-                <div class="mt-4 md:mt-0 flex items-center gap-3">
+                {{--  <div class="mt-4 md:mt-0 flex items-center gap-3">
                     <flux:button color="primary">
                         Nueva Solicitud
                     </flux:button>
@@ -21,6 +21,7 @@
                         Exportar
                     </flux:button>
                 </div>
+                --}}
             </div>
         </div>
         <!-- ⚪ CARD INFERIOR (Contenido principal) -->
@@ -28,11 +29,11 @@
             class="relative flex-1 overflow-hidden rounded-xl border border-gray-200  bg-white/90  backdrop-blur-md shadow-sm hover:shadow-md transition-all duration-300">
             <div class="p-6">
                 <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">
-                    Contenido del import db
+                    Importar base de datos Federal
                 </h2>
 
                 <!-- Aquí irá tu contenido dinámico -->
-                <div class="overflow-x-auto w-full">
+                <div class="overflow-x-auto w-full mt-7">
                     <livewire:upload-excel/> 
                 </div>
             </div>
