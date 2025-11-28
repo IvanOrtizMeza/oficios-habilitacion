@@ -114,9 +114,7 @@
                                 style="color:blue" />
                         </flux:field>
                     @endif
-                    @if($solicitud->estado == 0)
-
-                    @endif
+                   
                     @if($solicitud->estado !== 0)
                         <div class="md:col-span-2 space-y-3">
                             <div class="flex items-center justify-between">
@@ -145,22 +143,23 @@
 
                     @endif
                 </div>
-            @else
-                <flux:text class="mt-2 text-gray-500">Cargando...</flux:text>
-            @endif
+            
+            
 
 
             <div class="flex justify-end space-x-3 mt-6  border-t border-gray-200">
-
+                @if($solicitud->estado !== 0)
                 <flux:button variant="primary" wire:click="reenviar" class="px-6 py-2 mt-5 rounded-lg">
                     Reenviar Correo
                 </flux:button>
+                @endif
                 <flux:button variant="danger" wire:click="$set('showConfirmModal', false)"
                     class="px-6 py-2 mt-5 rounded-lg">
                     Cerrar
                 </flux:button>
 
             </div>
+            @endif
         </div>
     </flux:modal>
     <flux:modal wire:model.self="showConfirmModalPDF" class="w-9/12 max-w-6xl p-6 rounded-2xl shadow-xl bg-white h-5/6"

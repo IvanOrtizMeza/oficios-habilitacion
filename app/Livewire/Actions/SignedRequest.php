@@ -11,7 +11,7 @@ class SignedRequest
      */
     public function handle($solicitud,$fechaCreacionPdf)    
     {
-        
+       
         $endpoint = 'https://firma-dev.morelos.gob.mx/WSFirmaOficio';
         $keyPath = storage_path('app/keys/ROPG890310N82.key');
 
@@ -132,7 +132,7 @@ class SignedRequest
         $err      = curl_error($ch);
         curl_close($ch);
         if ($response === false) {
-            throw new RuntimeException("Error cURL: {$err}");
+            throw new RuntimeException("Error al firmar: {$err}");
         }
     
 
