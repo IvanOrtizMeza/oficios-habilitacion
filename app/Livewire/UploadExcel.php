@@ -33,7 +33,7 @@ class UploadExcel extends Component
     }    protected function rules()
     {
         return [
-            'excelFile' => 'required|file|max:5120', // máximo 2 MB
+            'excelFile' => 'required|file|mimes:xls,xlsx', 
         ];
     }
     protected function messages()
@@ -42,7 +42,7 @@ class UploadExcel extends Component
             'excelFile.required' => 'Debes seleccionar un archivo Excel.',
             'excelFile.file' => 'El archivo debe ser válido.',
             'excelFile.mimes' => 'Solo se permiten archivos Excel (.xls, .xlsx).',
-            'excelFile.max' => 'El archivo no puede superar los 2 MB.',
+            
         ];
     }
     //validacion en la carga del archivo excel
