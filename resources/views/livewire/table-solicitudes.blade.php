@@ -45,12 +45,12 @@
         <flux:select wire:model.live="filtroSelect" variant="listbox" searchable placeholder="Selecciona una opción...">
             <flux:select.option value="1">
                 <div class="flex items-center gap-2">
-                    <flux:icon.shield-check variant="mini" class="text-zinc-400" /> Habilitados
+                    <flux:icon.check-circle variant="mini" class="text-zinc-400" /> Habilitados
                 </div>
             </flux:select.option>
             <flux:select.option value="2">
                 <div class="flex items-center gap-2">
-                    <flux:icon.shield-check variant="mini" class="text-zinc-400" /> No Habilitados
+                    <flux:icon.x-circle variant="mini" class="text-zinc-400" /> No Habilitados
                 </div>
             </flux:select.option>
             <flux:select.option value="">
@@ -62,7 +62,7 @@
 
     </div>
     <!-- 🔸 Tabla de datos -->
-    <div class="!border border-gray-300 rounded-lg shadow-sm overflow-hidden">
+    <div class="!border border-gray-300 rounded-lg shadow-sm overflow-hidden mt-7">
         <flux:table>
             <!-- 🔹 Encabezados -->
             <x-tables.table-flux-columns :columnas="['Nombre', 'RFC', 'CURP', 'Estado', 'Acciones']" />
