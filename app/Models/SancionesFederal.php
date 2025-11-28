@@ -11,6 +11,7 @@ class SancionesFederal extends Model
     use HasFactory;
     protected $table = 'sancionados';
     protected $fillable = [
+        'tipo_origen',  
         'dependencia',
         'rfc',
         'homo',
@@ -24,7 +25,7 @@ class SancionesFederal extends Model
         'fecha_notificacion',
         'fecha_inicio',
         'fecha_fin',
-        'tipo_origen',
+        
     ];
 }
 

@@ -18,7 +18,7 @@
         <div class="mt-2 text-green-600">{{ session('message') }}</div>
     @endif
     <!-- 🔸 Filtros y búsqueda -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2 mt-2">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-2 mt-2">
         <flux:input type="text" placeholder="Buscar Solicitud..." wire:model.live="search" />
 
         <flux:date-picker placeholder="Selecciona una fecha">
@@ -27,7 +27,7 @@
 
         <flux:date-picker mode="range" min-range="3" placeholder="Selecciona un rango de fecha"
             wire:model="rangoDate" />
-        <div class="h-full flex items-stretch">
+        {{-- <div class="h-full flex items-stretch">
             <flux:radio.group variant="buttons" class="w-full *:flex-1" wire:model.live="estadoFiltro">
                 <flux:radio
                     class="data-[checked]:border-green-600 data-[checked]:text-green-700  data-[checked]:[&_[data-slot=icon]]:text-green-700"
@@ -39,8 +39,29 @@
                 </flux:radio>
             </flux:radio.group>
         </div>
-    </div>
+        --}}
 
+
+        <flux:select wire:model.live="filtroSelect" variant="listbox" searchable placeholder="Selecciona una opción...">
+            <flux:select.option value="1">
+                <div class="flex items-center gap-2">
+                    <flux:icon.shield-check variant="mini" class="text-zinc-400" /> Habilitados
+                </div>
+            </flux:select.option>
+            <flux:select.option value="2">
+                <div class="flex items-center gap-2">
+                    <flux:icon.shield-check variant="mini" class="text-zinc-400" /> No Habilitados
+                </div>
+            </flux:select.option>
+            <flux:select.option value="">
+                <div class="flex items-center gap-2">
+                    <flux:icon.shield-check variant="mini" class="text-zinc-400" /> Todas
+                </div>
+            </flux:select.option>
+        </flux:select>
+
+    </div>
+    <!-- 🔸 Tabla de datos -->
     <div class="!border border-gray-300 rounded-lg shadow-sm overflow-hidden">
         <flux:table>
             <!-- 🔹 Encabezados -->
@@ -75,20 +96,20 @@
                         <flux:input label="RFC" :value="$solicitud->rfc ?? 'S/D'" readonly />
                     </flux:field>
                     <flux:field>
-                        <flux:input label="Curp" :value="$solicitud->curp ?? 'S/D'" readonly />
+                        <flux:input class="mb-4" label="Curp" :value="$solicitud->curp ?? 'S/D'" readonly />
                     </flux:field>
                     @if($solicitud->statusSolicitud->nombre === 'Habilitado')
-                        <flux:field class="text-green-700">
+                        <flux:field class="mb-4 text-green-700">
                             <flux:input label="Estatus" :value="$solicitud->statusSolicitud->nombre ?? 'N/A'" readonly
                                 style="color:green" />
                         </flux:field>
                     @elseif($solicitud->statusSolicitud->nombre === 'Rechazado')
-                        <flux:field class="text-red-700">
+                        <flux:field class="mb-4 text-red-700">
                             <flux:input label="Estatus" :value="$solicitud->statusSolicitud->nombre ?? 'N/A'" readonly
                                 style="color:red" />
                         </flux:field>
                     @else
-                        <flux:field class="text-red-700">
+                        <flux:field class="mb-4 text-blue-700">
                             <flux:input label="Estatus" :value="$solicitud->statusSolicitud->nombre ?? 'N/A'" readonly
                                 style="color:blue" />
                         </flux:field>
@@ -97,30 +118,27 @@
 
                     @endif
                     @if($solicitud->estado !== 0)
-                        <flux:field class="md:col-span-2">
-                            <flux:input label="Correo" :value="$solicitud->email ?? 'S/D'" readonly />
-                        </flux:field>
-                        {{-- <div class="col-span-full">
-                            <label style="color: black;font-size: 15px;" class="block mb-1">Correo</label>
-                            <div x-data="{ readonly: @entangle('readonly') }" class="flex w-full space-x-2">
-                                <flux:input wire:model.defer="email" :readonly="$readonly" class="flex-1" x-ref="emailInput"
-                                    x-effect="
-                                                                            if (!readonly) {
-                                                                                $nextTick(() =>  $refs.emailInput.focus());
-                                                                            }" />
-                                <flux:button wire:click="accionCorreo"
-                                    icon="{{ $readonly ? 'pencil-square' : 'paper-airplane' }}">
-                                    {{ $readonly ? 'Renviar' : 'Renviar' }}
-                                </flux:button>
+                        <div class="md:col-span-2 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <flux:label class="text-base font-semibold">Correo</flux:label>
+                                <flux:checkbox wire:model.live="correoCheck" label="Modificar Correo" />
                             </div>
-                        </div>--}}
+                            <flux:input label="" wire:model.live="emailRenvio" :value="$solicitud->email ?? 'S/D'"
+                                :readonly="!$correoCheck" class="w-full" />
+
+                            @if($correoCheck)
+                                <flux:input label="Confirmar Correo" wire:model.live="emailRenvioConfirm"
+                                    placeholder="Confirme el correo" class="w-full" />
+                            @endif
+                        </div>
 
 
-                        <flux:field>
+
+                        <flux:field class="mt-4">
                             <flux:input label="Email enviado"
                                 :value="$solicitud->correo_enviado == 1 ? 'Enviado' : 'No enviado'" readonly />
                         </flux:field>
-                        <flux:field>
+                        <flux:field class="mt-4">
                             <flux:input label="Fecha de envio" :value="$solicitud->fecha_envio_correo_formateada ?? 'SIN FECHA'"
                                 readonly />
                         </flux:field>
@@ -134,8 +152,8 @@
 
             <div class="flex justify-end space-x-3 mt-6  border-t border-gray-200">
 
-                <flux:button variant="primary" wire:click="showModalRenviarCorreo" class="px-6 py-2 mt-5 rounded-lg">
-                    Renviar Correo
+                <flux:button variant="primary" wire:click="reenviar" class="px-6 py-2 mt-5 rounded-lg">
+                    Reenviar Correo
                 </flux:button>
                 <flux:button variant="danger" wire:click="$set('showConfirmModal', false)"
                     class="px-6 py-2 mt-5 rounded-lg">
@@ -145,67 +163,34 @@
             </div>
         </div>
     </flux:modal>
-    <flux:modal wire:model.self="showConfirmModalPDF" class="md:w-4/5 lg:w-3/4 p-6 rounded-2xl shadow-xl bg-white">
-        <div class="space-y-6">
+    <flux:modal wire:model.self="showConfirmModalPDF" class="w-9/12 max-w-6xl p-6 rounded-2xl shadow-xl bg-white h-5/6"
+        style="height:100vh">
+        <div class="space-y-6 h-full flex flex-col">
             <div class="flex items-center space-x-4 border-b border-gray-200 pb-3">
-                <flux:heading size="md" class="text-gray-900 font-semibold">OFICIO CORRESPONDIENTE A ESTA SOLICITUD
+                <flux:heading size="lg" class="text-gray-900 font-semibold">OFICIO CORRESPONDIENTE A ESTA SOLICITUD
                 </flux:heading>
             </div>
-            <div>
+            <div class="flex-1 overflow-auto">
 
                 @if($pathPDF)
-                    <iframe src="{{ $pathPDF}}" class="w-full h-[93vh]" frameborder="0">
+                    <iframe src="{{ $pathPDF}}" class="w-full h-full" frameborder="0">
                     </iframe>
                 @else
                     <p class="text-red-500">No se encontró el PDF.</p>
                 @endif
 
             </div>
-            <div class="flex justify-end space-x-3 mt-4 border-t border-gray-200">
+            <div class="flex justify-end space-x-3 mt-4 border-t border-gray-200 pt-4">
                 <flux:button variant="danger" wire:click="$set('showConfirmModalPDF', false)"
-                    class="px-6 py-2 rounded-lg mt-3">
+                    class="px-6 py-2 rounded-lg">
                     Cerrar
                 </flux:button>
-                <flux:button variant="primary" wire:click="descargarPDF" class="px-6 py-2 rounded-lg mt-3">
+                <flux:button variant="primary" wire:click="descargarPDF" class="px-6 py-2 rounded-lg">
                     Descargar
                 </flux:button>
             </div>
         </div>
     </flux:modal>
-    <flux:modal wire:model.self="showRenviarCorreo" class="md:w-96 p-6 rounded-2xl shadow-xl bg-white">
-        <div class="space-y-6">
-            <div class="flex items-center space-x-4 border-b border-gray-200 pb-3">
-                <flux:heading size="lg" class="text-gray-900 font-semibold">Renvio de correo</flux:heading>
-            </div>
-            @if($solicitud)
-                <div class="text-gray-700 space-y-6">
-                   
-                    <flux:field>
-                        <flux:input label="Correo" wire:model="emailRenvio" />
-                        
-                    </flux:field>
-                     <flux:field>
-                        <flux:input label="Confirmar Correo" wire:model="emailRenvioConfirm" />
-                       
-                    </flux:field>
-                </div>
-            @endif
-            
-            <div class="flex justify-end space-x-3 mt-6 border-t border-gray-200 pt-4">
-                <flux:button 
-                    variant="danger" 
-                    wire:click="$set('showRenviarCorreo', false)" 
-                    class="px-6 py-2 rounded-lg">
-                    Cancelar
-                </flux:button>
-                <flux:button 
-                    variant="primary" 
-                    wire:click="renviarEmail"
-                    class="px-6 py-2 rounded-lg">
-                    Enviar Correo
-                </flux:button>
-            </div>
-        </div>
-    </flux:modal>
+
 
 </div>

@@ -21,6 +21,7 @@ class TableSolicitudes extends Component
     public $emailRenvio = '';
     public $emailRenvioConfirm = '';
     public $email = '';
+    public $correoCheck = false;
     public array $rangoDate = [];
 
     public $solicitudesSimuladas = [];
@@ -42,7 +43,7 @@ class TableSolicitudes extends Component
     public $solicitudId; // ID que viene de la tabla
     public $solicitud;   // Aquí guardarás la info completa de la base de datos
     public $pathPDF = null;
-
+    public string $filtroSelect = '';
     public function verPDF($id)
     {
 
@@ -66,7 +67,9 @@ class TableSolicitudes extends Component
         try {
             $this->solicitudId = $id;
             $this->loadSolicitud();
-            //$this->email = $this->solicitud->email;
+            $this->emailRenvio = $this->solicitud->email;
+            $this->correoCheck = false;
+            $this->emailRenvioConfirm = '';
             $this->readonly = true;
             $this->showConfirmModal = true;
         } catch (Exception $e) {
@@ -98,23 +101,14 @@ class TableSolicitudes extends Component
             return null;
         }
     }
-    public function showModalRenviarCorreo()
-    {
 
-        try {
-            $this->emailRenvio = '';
+    public function updatedCorreoCheck($value)
+    {
+        if (!$value) {
             $this->emailRenvioConfirm = '';
-            $this->showConfirmModal = false;
-            $this->showRenviarCorreo = true;
-        } catch (Exception $e) {
-            $this->toast(
-                'warning',
-                'Ocurrio un problema',
-                'Oucrrio un problema al ver la solicitud ' . $e->getMessage(),
-                'top-center'
-            );
         }
     }
+    
     public function descargarPDF()
     {
         $this->showConfirmModalPDF = false;
@@ -129,8 +123,8 @@ class TableSolicitudes extends Component
                         ->orWhere('rfc', 'like', '%' . $this->search . '%');
                 });
             })
-            ->when($this->estadoFiltro, function ($query) {
-                $query->where('estado', $this->estadoFiltro);
+            ->when($this->filtroSelect, function ($query) {
+                $query->where('estado', $this->filtroSelect);
             })
             ->orderBy('id', 'desc')
             ->paginate($this->perPage);
@@ -269,11 +263,12 @@ class TableSolicitudes extends Component
     
     public function renviarEmail()
     {
-        
+        // Validar que ambos emails coincidan
         if ($this->emailRenvio !== $this->emailRenvioConfirm) {
             $this->toast('warning', 'Error de validación', 'Los correos electrónicos no coinciden.', 'top-center');
             return;
         }
+
         try {
             $solicitud = Solicitud::findOrFail($this->solicitudId);
             $nuevoEmail = $this->emailRenvio;
@@ -300,6 +295,48 @@ class TableSolicitudes extends Component
         } catch (\Throwable $e) {
 
             $this->toast('danger', 'Error Inesperado', 'Ocurrió un problema durante el renvio.' . $e->getMessage(), 'top-center');
+            $this->showConfirmModal = false;
+        }
+    }
+
+    /**
+     * Reenviar condicional: si la casilla de modificar correo está marcada,
+     * valida y reenvía al correo nuevo; si no, reenvía al correo original.
+     */
+    public function reenviar()
+    {
+        if ($this->correoCheck) {
+            // Si se eligió modificar el correo, delegar a renviarEmail (que valida coincidencia)
+            $this->renviarEmail();
+            return;
+        }
+
+        // Caso por defecto: reenviar al correo original almacenado en la solicitud
+        try {
+            $solicitud = Solicitud::findOrFail($this->solicitudId);
+            $emailDestino = $solicitud->email;
+            $fullPdfPath = $solicitud->pdf_path;
+
+            $emailResult = (new SendEmail())->handle($solicitud, $fullPdfPath, $emailDestino);
+
+            if (!$emailResult) {
+                $this->toast('danger', 'Error', 'Ocurrio un error al reenviar el correo.', 'top-center');
+                return;
+            }
+
+            $solicitud->update([
+                'correo_enviado' => 1,
+                'fecha_envio_correo' => now(),
+            ]);
+
+            event(new ProcessRequest($solicitud));
+            $this->toast('success', 'Reenvio Exitoso', 'El Archivo PDF fue reenviado con éxito.', 'top-center');
+            $this->showConfirmModal = false;
+        } catch (ModelNotFoundException $e) {
+            $this->toast('danger', 'Error', 'La solicitud que intenta reenviar no existe.', 'top-center');
+            $this->showConfirmModal = false;
+        } catch (\Throwable $e) {
+            $this->toast('danger', 'Error Inesperado', 'Ocurrió un problema durante el reenvío.' . $e->getMessage(), 'top-center');
             $this->showConfirmModal = false;
         }
     }

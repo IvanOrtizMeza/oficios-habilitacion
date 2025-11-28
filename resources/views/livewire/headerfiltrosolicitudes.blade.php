@@ -32,21 +32,22 @@
                 </h2>
 
                 <!-- Aquí irá tu contenido dinámico -->
+                {{--  --}}
                 <div class="overflow-x-auto w-full ">
-                    <flux:navbar>
+                   {{--   <flux:navbar>
                         @foreach (\App\Enums\DocumentStatus::cases() as $menu)
                         <flux:navbar.item href="javascript:" icon="home" wire:click="$set('tabActiva', '{{ $menu->name }}')">
                             {{ $menu->description() }}
                         </flux:navbar.item>
                         @endforeach
-                    </flux:navbar>
+                    </flux:navbar> --}}
                     <div>
                         @if ($tabActiva === \App\Enums\DocumentStatus::Solicitudes->name)
                         <livewire:table-solicitudes />
                         @elseif ($tabActiva === \App\Enums\DocumentStatus::Emitidas->name)
                         <livewire:table-solicitudes-emitidas />
-                        {{--@elseif ($tabActiva === \App\Enums\DocumentStatus::Pendientes->name)
-                        <livewire:table-solicitudes-rechazadas />--}}
+                        @elseif ($tabActiva === \App\Enums\DocumentStatus::Pendientes->name)
+                        <livewire:table-solicitudes-rechazadas />
                         @endif
                     </div>
                 </div>
